@@ -4,20 +4,29 @@ interface SourcesFooterProps {
 }
 
 export function SourcesFooter({ generatedAt, embed }: SourcesFooterProps) {
+  const date = generatedAt ? generatedAt.slice(0, 10) : undefined
+  const full =
+    'Indicative flood screening only — not a full probabilistic risk model. Historical Shabelle flood extent is clipped to the city and intersected separately with buildings, OSM roads, Nagaad project roads, and IDP sites. Buildings from SURP II footprints; city-wide roads from OSM; Nagaad roads from SURP-II GeoPackages and design-ready KML/KMZ. IDP sites from IOM DTM / SURP II. Hospitals, schools, and markets are reserved for later collection. Basemap tiles © Esri.' +
+    (date ? ` Data processed ${date}.` : '')
+
+  const compact = [
+    'Indicative screening — not a probabilistic model',
+    'Shabelle historical flood',
+    'SURP II / OSM / IOM DTM',
+    'Basemap © Esri',
+    date ? `Processed ${date}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
   return (
     <footer
-      className={`border-t border-slate-200 bg-slate-50 text-[11px] leading-snug text-slate-600 ${
-        embed ? 'px-3 py-1.5' : 'px-4 py-2'
+      className={`shrink-0 border-t border-slate-200 bg-slate-50 text-[10px] leading-tight text-slate-600 ${
+        embed ? 'px-2.5 py-1' : 'px-4 py-1.5'
       }`}
+      title={full}
     >
-      <p>
-        Indicative screening only — not a full probabilistic risk model. Flood is a historical
-        Juba–Shabelle extent clipped to the city, intersected with buildings, roads, and IDP sites.
-        Conflict events from ACLED (Raleigh, Linke, Hegre & Karlsen); attribution required.
-        Buildings from SURP II footprints; roads from OSM/SURP II; IDP sites from IOM DTM / SURP II.
-        Basemap tiles © Esri.
-        {generatedAt ? ` Data processed ${generatedAt.slice(0, 10)}.` : ''}
-      </p>
+      {embed ? <p className="truncate">{compact}</p> : <p>{full}</p>}
     </footer>
   )
 }

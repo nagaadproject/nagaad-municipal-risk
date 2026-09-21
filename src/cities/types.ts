@@ -1,4 +1,4 @@
-export type LayerGroup = 'hazard' | 'exposure' | 'infrastructure' | 'investment'
+export type LayerGroup = 'hazard' | 'exposure' | 'infrastructure' | 'investment' | 'services'
 
 export interface LegendItem {
   color: string
@@ -21,6 +21,8 @@ export interface CityConfig {
   center: [number, number]
   zoom: number
   minZoom?: number
+  /** Southwest and northeast corners [lng, lat], used to fit the city in embed views. */
+  bounds?: [[number, number], [number, number]]
   layers: LayerDef[]
 }
 
@@ -37,7 +39,15 @@ export interface CitySummary {
   idpHouseholdsInFlood: number
   roadsKmTotal: number
   roadsKmInFlood: number
-  conflictEvents: number
+  osmRoadsKmTotal?: number
+  osmRoadsKmInFlood?: number
+  projectRoadsKmTotal?: number
+  projectRoadsKmInFlood?: number
+  projectRoadsCount?: number
+  projectRoadsInFloodCount?: number
+  projectSitesTotal?: number
+  projectSitesInFlood?: number
+  facilitiesTotal?: number
   floodAreaHa: number
 }
 

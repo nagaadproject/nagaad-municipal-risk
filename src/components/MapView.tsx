@@ -5,13 +5,12 @@ import {
   Popup,
   ScaleControl,
   addProtocol,
-  type GeoJSONSource,
+  type LngLatBoundsLike,
   type MapLayerMouseEvent,
   type StyleSpecification,
 } from 'maplibre-gl'
 import { Protocol } from 'pmtiles'
 import type { CityConfig } from '../cities/types'
-import type { InvestmentPoint } from '../lib/data'
 import { dataUrl, pmtilesUrl } from '../lib/data'
 
 let protocolRegistered = false
@@ -43,6 +42,15 @@ const BASEMAP_STYLE: StyleSpecification = {
   layers: [{ id: 'esri', type: 'raster', source: 'esri' }],
 }
 
+const TOP_LAYERS = [
+  'projectRoads-line',
+  'projectSites-fill',
+  'projectSites-line',
+  'projectSites-circle',
+  'idps-circle',
+  'facilities-circle',
+]
+
 export interface MapHandle {
   flyTo: (lng: number, lat: number) => void
 }
@@ -50,7 +58,6 @@ export interface MapHandle {
 interface MapViewProps {
   city: CityConfig
   layerOn: Record<string, boolean>
-  investments: InvestmentPoint[]
 }
 
 function popupHtml(title: string, rows: [string, string][]): string {
@@ -61,17 +68,23 @@ function popupHtml(title: string, rows: [string, string][]): string {
   return `<strong>${title}</strong>${body}`
 }
 
+function floodLabel(value: unknown): string {
+  return Number(value) === 1 ? 'In flood extent' : 'Outside'
+}
+
 export const MapView = forwardRef<MapHandle, MapViewProps>(function MapView(
-  { city, layerOn, investments },
+  { city, layerOn },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const popupRef = useRef<Popup | null>(null)
   const readyRef = useRef(false)
+  const userMovedRef = useRef(false)
 
   useImperativeHandle(ref, () => ({
     flyTo(lng: number, lat: number) {
+      userMovedRef.current = true
       mapRef.current?.flyTo({ center: [lng, lat], zoom: 16, essential: true })
     },
   }))
@@ -86,12 +99,39 @@ export const MapView = forwardRef<MapHandle, MapViewProps>(function MapView(
       center: city.center,
       zoom: city.zoom,
       minZoom: city.minZoom ?? 10,
+      attributionControl: { compact: true },
     })
-    map.addControl(new NavigationControl({ visualizePitch: false }), 'top-right')
-    map.addControl(new ScaleControl({ maxWidth: 120 }), 'bottom-left')
+    map.addControl(new NavigationControl({ visualizePitch: false, showCompass: false }), 'top-right')
+    map.addControl(new ScaleControl({ maxWidth: 80 }), 'bottom-left')
+
+    userMovedRef.current = false
+    const markUserMoved = () => {
+      userMovedRef.current = true
+    }
+    const hasUserMoved = () => userMovedRef.current
+    const fitCity = () => {
+      if (!city.bounds) return
+      map.fitBounds(city.bounds as LngLatBoundsLike, {
+        padding: 28,
+        maxZoom: 13,
+        duration: 0,
+      })
+    }
+    map.on('dragstart', markUserMoved)
+    map.on('zoomstart', (event) => {
+      if (event.originalEvent) markUserMoved()
+    })
+    fitCity()
+    map.once('load', () => {
+      map.resize()
+      if (!hasUserMoved()) fitCity()
+    })
     mapRef.current = map
     popupRef.current = new Popup({ closeButton: true, maxWidth: '280px' })
-    const ro = new ResizeObserver(() => map.resize())
+    const ro = new ResizeObserver(() => {
+      map.resize()
+      if (!hasUserMoved()) fitCity()
+    })
     ro.observe(containerRef.current)
 
     const bindClick = (
@@ -120,67 +160,28 @@ export const MapView = forwardRef<MapHandle, MapViewProps>(function MapView(
       console.warn('Map error', e.error ?? e)
     })
 
+    const raiseTopLayers = () => {
+      for (const id of TOP_LAYERS) {
+        if (map.getLayer(id)) map.moveLayer(id)
+      }
+    }
+
     const startOverlays = () => {
       if (map.getSource('idps')) return
       const slug = city.slug
       map.addSource('boundary', { type: 'geojson', data: absDataUrl(slug, 'boundary.geojson') })
       map.addSource('river', { type: 'geojson', data: absDataUrl(slug, 'river.geojson') })
       map.addSource('idps', { type: 'geojson', data: absDataUrl(slug, 'idps.geojson') })
-      map.addSource('conflict', { type: 'geojson', data: absDataUrl(slug, 'conflict.geojson') })
-      map.addSource('investments', {
+      map.addSource('projectRoads', {
         type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] },
+        data: absDataUrl(slug, 'project_roads.geojson'),
       })
-      map.addSource('flood', {
-        type: 'vector',
-        url: pmtilesUrl(absDataUrl(slug, 'flood.pmtiles')),
+      map.addSource('projectSites', {
+        type: 'geojson',
+        data: absDataUrl(slug, 'project_sites.geojson'),
       })
-      map.addSource('buildings', {
-        type: 'vector',
-        url: pmtilesUrl(absDataUrl(slug, 'buildings.pmtiles')),
-      })
-      map.addSource('roads', {
-        type: 'vector',
-        url: pmtilesUrl(absDataUrl(slug, 'roads.pmtiles')),
-      })
+      map.addSource('facilities', { type: 'geojson', data: absDataUrl(slug, 'facilities.geojson') })
 
-      map.addLayer({
-        id: 'flood-fill',
-        type: 'fill',
-        source: 'flood',
-        'source-layer': 'flood',
-        paint: { 'fill-color': '#2563eb', 'fill-opacity': 0.32 },
-      })
-      map.addLayer({
-        id: 'buildings-fill',
-        type: 'fill',
-        source: 'buildings',
-        'source-layer': 'buildings',
-        minzoom: 13,
-        paint: {
-          'fill-color': ['case', ['==', ['get', 'inFlood'], 1], '#dc2626', '#a8a29e'],
-          'fill-opacity': 0.75,
-        },
-      })
-      map.addLayer({
-        id: 'buildings-line',
-        type: 'line',
-        source: 'buildings',
-        'source-layer': 'buildings',
-        minzoom: 15,
-        paint: { 'line-color': '#44403c', 'line-width': 0.4, 'line-opacity': 0.5 },
-      })
-      map.addLayer({
-        id: 'roads-line',
-        type: 'line',
-        source: 'roads',
-        'source-layer': 'roads',
-        paint: {
-          'line-color': ['case', ['==', ['get', 'inFlood'], 1], '#b45309', '#57534e'],
-          'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.4, 16, 2.2],
-          'line-opacity': 0.85,
-        },
-      })
       map.addLayer({
         id: 'river-line',
         type: 'line',
@@ -194,15 +195,47 @@ export const MapView = forwardRef<MapHandle, MapViewProps>(function MapView(
         paint: { 'line-color': '#0f172a', 'line-width': 2, 'line-dasharray': [2, 1] },
       })
       map.addLayer({
-        id: 'conflict-circle',
-        type: 'circle',
-        source: 'conflict',
+        id: 'projectRoads-line',
+        type: 'line',
+        source: 'projectRoads',
         paint: {
-          'circle-radius': 5,
-          'circle-color': '#ca8a04',
-          'circle-stroke-width': 1,
+          'line-color': [
+            'case',
+            [
+              'any',
+              ['==', ['get', 'stage'], 'completed_ongoing'],
+              ['in', ['get', 'status'], ['literal', ['Completed', 'Ongoing']]],
+            ],
+            '#059669',
+            '#7c3aed',
+          ],
+          'line-width': ['interpolate', ['linear'], ['zoom'], 11, 2.2, 16, 5],
+          'line-opacity': 0.95,
+        },
+      })
+      map.addLayer({
+        id: 'projectSites-fill',
+        type: 'fill',
+        source: 'projectSites',
+        filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
+        paint: { 'fill-color': '#047857', 'fill-opacity': 0.55 },
+      })
+      map.addLayer({
+        id: 'projectSites-line',
+        type: 'line',
+        source: 'projectSites',
+        paint: { 'line-color': '#047857', 'line-width': 2.4 },
+      })
+      map.addLayer({
+        id: 'projectSites-circle',
+        type: 'circle',
+        source: 'projectSites',
+        filter: ['==', ['geometry-type'], 'Point'],
+        paint: {
+          'circle-radius': 7,
+          'circle-color': '#047857',
+          'circle-stroke-width': 1.5,
           'circle-stroke-color': '#fff',
-          'circle-opacity': 0.9,
         },
       })
       map.addLayer({
@@ -235,33 +268,29 @@ export const MapView = forwardRef<MapHandle, MapViewProps>(function MapView(
         },
       })
       map.addLayer({
-        id: 'investments-circle',
+        id: 'facilities-circle',
         type: 'circle',
-        source: 'investments',
+        source: 'facilities',
         paint: {
           'circle-radius': 7,
-          'circle-color': '#059669',
+          'circle-color': [
+            'match',
+            ['get', 'type'],
+            'hospital',
+            '#1d4ed8',
+            'school',
+            '#7c3aed',
+            'university',
+            '#7c3aed',
+            'market',
+            '#d97706',
+            '#334155',
+          ],
           'circle-stroke-width': 1.5,
           'circle-stroke-color': '#fff',
         },
       })
 
-      bindClick(
-        'buildings-fill',
-        () => 'Building',
-        (p) => [
-          ['Flood exposure', Number(p.inFlood) === 1 ? 'In flood extent' : 'Outside'],
-          ['Area m²', String(p.areaM2 ?? '')],
-        ],
-      )
-      bindClick(
-        'roads-line',
-        (p) => String(p.name || p.highway || 'Road'),
-        (p) => [
-          ['Class', String(p.highway ?? '')],
-          ['Flood exposure', Number(p.inFlood) === 1 ? 'In flood extent' : 'Outside'],
-        ],
-      )
       bindClick(
         'idps-circle',
         (p) => String(p.settlementName ?? 'Settlement'),
@@ -269,27 +298,125 @@ export const MapView = forwardRef<MapHandle, MapViewProps>(function MapView(
           ['Type', String(p.settlementClass ?? '')],
           ['IDP individuals', String(p.idpIndividuals ?? 0)],
           ['Households', String(p.idpHouseholds ?? 0)],
-          ['Flood exposure', Number(p.inFlood) === 1 ? 'In flood extent' : 'Outside'],
+          ['Flood exposure', floodLabel(p.inFlood)],
         ],
       )
       bindClick(
-        'conflict-circle',
-        (p) => String(p.event_type ?? p.eventType ?? 'Conflict event'),
+        'projectRoads-line',
+        (p) => String(p.name ?? 'Nagaad road'),
         (p) => [
-          ['Date', String(p.event_date ?? p.eventDate ?? '')],
-          ['Location', String(p.location ?? '')],
-          ['Fatalities', String(p.fatalities ?? '')],
+          ['Status', String(p.status ?? '')],
+          ['Category', String(p.category ?? '')],
+          ['Length', p.lengthKm != null ? `${p.lengthKm} km` : ''],
+          ['Flood exposure', floodLabel(p.inFlood)],
         ],
       )
       bindClick(
-        'investments-circle',
-        (p) => String(p.name ?? 'Investment'),
+        'projectSites-fill',
+        (p) => String(p.name ?? 'Nagaad site'),
+        (p) => [
+          ['Status', String(p.status ?? '')],
+          ['Category', String(p.category ?? '')],
+          ['Flood exposure', floodLabel(p.inFlood)],
+        ],
+      )
+      bindClick(
+        'projectSites-line',
+        (p) => String(p.name ?? 'Nagaad site'),
+        (p) => [
+          ['Status', String(p.status ?? '')],
+          ['Category', String(p.category ?? '')],
+          ['Flood exposure', floodLabel(p.inFlood)],
+        ],
+      )
+      bindClick(
+        'facilities-circle',
+        (p) => String(p.name ?? 'Facility'),
         (p) => [
           ['Type', String(p.type ?? '')],
           ['Status', String(p.status ?? '')],
-          ['Cost', String(p.cost ?? '')],
+          ['Flood exposure', floodLabel(p.inFlood)],
         ],
       )
+
+      map.addSource('flood', {
+        type: 'vector',
+        url: pmtilesUrl(absDataUrl(slug, 'flood.pmtiles')),
+      })
+      map.addSource('buildings', {
+        type: 'vector',
+        url: pmtilesUrl(absDataUrl(slug, 'buildings.pmtiles')),
+      })
+      map.addSource('roads', {
+        type: 'vector',
+        url: pmtilesUrl(absDataUrl(slug, 'roads.pmtiles')),
+      })
+
+      const addVectorLayers = () => {
+        if (map.getLayer('flood-fill')) return
+        if (!['flood', 'buildings', 'roads'].every((id) => map.isSourceLoaded(id))) return
+        map.addLayer({
+          id: 'flood-fill',
+          type: 'fill',
+          source: 'flood',
+          'source-layer': 'flood',
+          paint: { 'fill-color': '#2563eb', 'fill-opacity': 0.32 },
+        })
+        map.addLayer({
+          id: 'buildings-fill',
+          type: 'fill',
+          source: 'buildings',
+          'source-layer': 'buildings',
+          minzoom: 13,
+          paint: {
+            'fill-color': ['case', ['==', ['get', 'inFlood'], 1], '#dc2626', '#a8a29e'],
+            'fill-opacity': 0.75,
+          },
+        })
+        map.addLayer({
+          id: 'buildings-line',
+          type: 'line',
+          source: 'buildings',
+          'source-layer': 'buildings',
+          minzoom: 15,
+          paint: { 'line-color': '#44403c', 'line-width': 0.4, 'line-opacity': 0.5 },
+        })
+        map.addLayer({
+          id: 'roads-line',
+          type: 'line',
+          source: 'roads',
+          'source-layer': 'roads',
+          paint: {
+            'line-color': ['case', ['==', ['get', 'inFlood'], 1], '#b45309', '#57534e'],
+            'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.4, 16, 2.2],
+            'line-opacity': 0.85,
+          },
+        })
+        bindClick(
+          'buildings-fill',
+          () => 'Building',
+          (p) => [
+            ['Flood exposure', floodLabel(p.inFlood)],
+            ['Area m²', String(p.areaM2 ?? '')],
+          ],
+        )
+        bindClick(
+          'roads-line',
+          (p) => String(p.name || p.highway || 'OSM road'),
+          (p) => [
+            ['Class', String(p.highway ?? '')],
+            ['Network', 'OpenStreetMap'],
+            ['Flood exposure', floodLabel(p.inFlood)],
+          ],
+        )
+        raiseTopLayers()
+        for (const [id, on] of Object.entries(layerOn)) {
+          setLayerVisibility(map, id, on)
+        }
+      }
+
+      map.on('sourcedata', addVectorLayers)
+      map.on('idle', addVectorLayers)
 
       readyRef.current = true
       for (const [id, on] of Object.entries(layerOn)) {
@@ -300,6 +427,7 @@ export const MapView = forwardRef<MapHandle, MapViewProps>(function MapView(
 
     if (map.loaded()) startOverlays()
     else map.once('load', startOverlays)
+    map.once('idle', startOverlays)
 
     return () => {
       ro.disconnect()
@@ -319,31 +447,17 @@ export const MapView = forwardRef<MapHandle, MapViewProps>(function MapView(
     }
   }, [layerOn, city.layers])
 
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !readyRef.current) return
-    const source = map.getSource('investments') as GeoJSONSource | undefined
-    source?.setData({
-      type: 'FeatureCollection',
-      features: investments.map((item) => ({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [item.lng, item.lat] },
-        properties: { name: item.name, type: item.type, status: item.status, cost: item.cost },
-      })),
-    })
-  }, [investments])
-
   return <div ref={containerRef} className="h-full w-full" />
 })
 
 function setLayerVisibility(map: MapLibreMap, id: string, on: boolean) {
   const visibility = on ? 'visible' : 'none'
   const suffixes =
-    id === 'buildings'
-      ? ['-fill', '-line']
+    id === 'buildings' || id === 'projectSites'
+      ? ['-fill', '-line', '-circle']
       : id === 'flood'
         ? ['-fill']
-        : id === 'roads' || id === 'river' || id === 'boundary'
+        : id === 'roads' || id === 'river' || id === 'boundary' || id === 'projectRoads'
           ? ['-line']
           : ['-circle']
   for (const suffix of suffixes) {

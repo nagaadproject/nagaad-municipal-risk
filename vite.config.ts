@@ -5,4 +5,7 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   base: process.env.GITHUB_PAGES === 'true' ? '/nagaad-municipal-risk/' : '/',
   plugins: [react(), tailwindcss()],
+  optimizeDeps: {
+    exclude: ['maplibre-gl'],
+  },
 })

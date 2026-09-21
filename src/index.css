@@ -5,7 +5,10 @@ html,
 body,
 #root {
   height: 100%;
+  max-height: 100%;
   margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body {
@@ -30,4 +33,9 @@ body {
 
 .maplibregl-ctrl-attrib {
   font-size: 10px;
+}
+
+.maplibregl-ctrl-group button {
+  width: 28px !important;
+  height: 28px !important;
 }

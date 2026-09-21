@@ -7,11 +7,21 @@ interface KpiStripProps {
 }
 
 export function KpiStrip({ summary, embed }: KpiStripProps) {
+  const osmInFlood = summary?.osmRoadsKmInFlood ?? summary?.roadsKmInFlood
+  const osmTotal = summary?.osmRoadsKmTotal ?? summary?.roadsKmTotal
+  const projectInFlood = summary?.projectRoadsKmInFlood
+  const projectTotal = summary?.projectRoadsKmTotal
+
   const items = [
+    {
+      label: 'Flood area',
+      value: summary ? formatHa(summary.floodAreaHa) : '—',
+      hint: summary ? 'Historical extent in the city' : 'Run ETL to populate',
+    },
     {
       label: 'Buildings in flood',
       value: summary ? formatInt(summary.buildingsInFlood) : '—',
-      hint: summary ? `of ${formatInt(summary.buildingsTotal)} footprints` : 'Run ETL to populate',
+      hint: summary ? `of ${formatInt(summary.buildingsTotal)} footprints` : 'Intersected footprints',
     },
     {
       label: 'IDP people exposed',
@@ -21,31 +31,39 @@ export function KpiStrip({ summary, embed }: KpiStripProps) {
         : 'Sites intersecting flood',
     },
     {
-      label: 'Roads in flood',
-      value: summary ? formatKm(summary.roadsKmInFlood) : '—',
-      hint: summary ? `of ${formatKm(summary.roadsKmTotal)} mapped` : 'Intersected length',
+      label: 'OSM roads in flood',
+      value: summary && osmInFlood != null ? formatKm(osmInFlood) : '—',
+      hint: summary && osmTotal != null ? `of ${formatKm(osmTotal)} mapped` : 'OpenStreetMap network',
     },
     {
-      label: 'Conflict events',
-      value: summary ? formatInt(summary.conflictEvents) : '—',
-      hint: summary ? `${formatHa(summary.floodAreaHa)} flood area` : 'ACLED in city extent',
+      label: 'Nagaad roads in flood',
+      value: summary && projectInFlood != null ? formatKm(projectInFlood) : '—',
+      hint:
+        summary && projectTotal != null
+          ? `of ${formatKm(projectTotal)} invested / designed`
+          : 'Completed, ongoing, design-ready',
     },
   ]
 
   return (
-    <div className={`grid grid-cols-2 lg:grid-cols-4 ${embed ? 'gap-2' : 'gap-3'}`}>
+    <div className={`grid shrink-0 grid-cols-5 ${embed ? 'gap-1' : 'gap-3'}`}>
       {items.map((item) => (
         <div
           key={item.label}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm"
+          className={`min-w-0 overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm ${
+            embed ? 'px-2 py-1' : 'px-3 py-2'
+          }`}
+          title={`${item.label}: ${item.value} — ${item.hint}`}
         >
-          <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+          <div className="truncate text-[9px] font-medium uppercase leading-none tracking-wide text-slate-500">
             {item.label}
           </div>
-          <div className={`font-semibold text-slate-900 ${embed ? 'text-lg' : 'text-2xl'}`}>
+          <div
+            className={`truncate font-semibold leading-tight text-slate-900 ${embed ? 'text-sm' : 'text-2xl'}`}
+          >
             {item.value}
           </div>
-          <div className="text-[11px] text-slate-500">{item.hint}</div>
+          <div className="truncate text-[9px] leading-none text-slate-500">{item.hint}</div>
         </div>
       ))}
     </div>

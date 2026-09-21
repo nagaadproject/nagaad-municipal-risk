@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "sheikh-hassan-barsane-road-3km",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "name": "Sheikh Hassan Barsane Road", "status": "Ongoing", "category": "Roads", "packageName": "Beledweyne Investments", "stage": "completed_ongoing", "network": "nagaad", "sourceFile": "SURP-II Investments completed and ongoing/3. Package 3 (3km) Ongoing/Sheikh Hassan Barsane Road (3km).gpkg", "sourceFormat": "gpkg", "lengthKm": 3.0 }, "geometry": { "type": "MultiLineString", "coordinates": [ [ [ 45.18979871118399, 4.730452377555148 ], [ 45.188988756964029, 4.729890778697831 ], [ 45.18727187871395, 4.728589653580357 ], [ 45.185227010487601, 4.727147640387995 ], [ 45.183493159640882, 4.725929081007484 ], [ 45.180640805533038, 4.723889025490089 ], [ 45.177139143045707, 4.721400335593328 ], [ 45.174818869091958, 4.719778136573233 ], [ 45.1723014547593, 4.718056151556165 ], [ 45.171240686171707, 4.717490590246525 ], [ 45.17121868738483, 4.717490574537444 ], [ 45.170563049554367, 4.717098112399137 ], [ 45.170064831311223, 4.716752109305363 ], [ 45.169629313778238, 4.716408950147955 ], [ 45.16936402807935, 4.716118859900656 ], [ 45.169288234897422, 4.715817329150825 ], [ 45.169436520621588, 4.715463228314547 ], [ 45.170074332764322, 4.714239933353459 ] ] ] } }
+]
+}

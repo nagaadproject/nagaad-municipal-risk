@@ -1,10 +1,21 @@
 import type { CityConfig, LayerGroup } from '../cities/types'
 
 const GROUP_LABEL: Record<LayerGroup, string> = {
-  hazard: 'Hazard',
+  hazard: 'Flood hazard',
   exposure: 'Exposure',
   infrastructure: 'Infrastructure',
   investment: 'Investment',
+  services: 'Services',
+}
+
+function legendCaption(label: string) {
+  if (label.startsWith('Completed')) return 'Built'
+  if (label === 'Design ready') return 'Design'
+  if (label === 'River centreline') return 'River'
+  if (label === 'Office / buildings') return 'Sites'
+  if (label === 'Ever flooded') return 'Flooded'
+  if (label === 'Urban extent') return 'Extent'
+  return label
 }
 
 interface LayerPanelProps {
@@ -14,45 +25,53 @@ interface LayerPanelProps {
 }
 
 export function LayerPanel({ city, layerOn, onToggle }: LayerPanelProps) {
-  const groups: LayerGroup[] = ['hazard', 'exposure', 'infrastructure', 'investment']
+  const groups: LayerGroup[] = ['hazard', 'exposure', 'infrastructure', 'investment', 'services']
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-      <h2 className="mb-2 text-sm font-semibold text-slate-900">Layers</h2>
+    <section className="shrink-0 px-2.5 py-2">
+      <h2 className="mb-1 text-xs font-semibold text-slate-900">Layers</h2>
       {groups.map((group) => {
         const layers = city.layers.filter((l) => l.group === group)
         if (!layers.length) return null
         return (
-          <div key={group} className="mb-3 last:mb-0">
-            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          <div key={group} className="mb-1.5 last:mb-0">
+            <div className="mb-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-400">
               {GROUP_LABEL[group]}
             </div>
-            <ul className="space-y-1.5">
+            <ul>
               {layers.map((layer) => (
                 <li key={layer.id}>
-                  <label className="flex cursor-pointer items-start gap-2 text-sm">
+                  <label className="flex cursor-pointer items-center gap-1.5 overflow-hidden rounded px-0.5 py-[3px] hover:bg-slate-50">
                     <input
                       type="checkbox"
-                      className="mt-0.5"
+                      className="size-3.5 shrink-0 accent-[#1e4d7b]"
                       checked={layerOn[layer.id] !== false}
                       onChange={() => onToggle(layer.id)}
                     />
-                    <span>
-                      <span className="text-slate-800">{layer.label}</span>
-                      <span className="mt-0.5 flex flex-wrap gap-x-3 gap-y-1">
-                        {layer.legend.map((item) => (
+                    <span
+                      className="min-w-0 flex-1 truncate text-[11px] leading-none text-slate-800"
+                      title={layer.label}
+                    >
+                      {layer.label}
+                    </span>
+                    <span className="flex shrink-0 items-center justify-end gap-1">
+                      {layer.legend.map((item) => (
+                        <span
+                          key={item.label}
+                          className="inline-flex items-center gap-0.5"
+                          title={item.label}
+                        >
                           <span
-                            key={item.label}
-                            className="inline-flex items-center gap-1 text-[11px] text-slate-500"
-                          >
-                            <span
-                              className="inline-block h-2.5 w-2.5 rounded-sm"
-                              style={{ background: item.color }}
-                            />
-                            {item.label}
-                          </span>
-                        ))}
-                      </span>
+                            className="inline-block size-2 shrink-0 rounded-[2px]"
+                            style={{ background: item.color }}
+                          />
+                          {layer.legend.length <= 2 && (
+                            <span className="text-[9px] leading-none text-slate-500">
+                              {legendCaption(item.label)}
+                            </span>
+                          )}
+                        </span>
+                      ))}
                     </span>
                   </label>
                 </li>
@@ -61,6 +80,6 @@ export function LayerPanel({ city, layerOn, onToggle }: LayerPanelProps) {
           </div>
         )
       })}
-    </div>
+    </section>
   )
 }

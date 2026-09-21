@@ -66,41 +66,6 @@ export function idpSitesFromGeoJSON(fc: FeatureCollectionLike | null): IdpSite[]
   })
 }
 
-export interface InvestmentPoint {
-  name: string
-  type: string
-  status: string
-  cost: string
-  lng: number
-  lat: number
-}
-
-export async function loadInvestments(slug: string): Promise<InvestmentPoint[]> {
-  const res = await fetch(dataUrl(slug, 'investments.csv'))
-  if (!res.ok) return []
-  const text = await res.text()
-  const lines = text.trim().split(/\r?\n/).filter(Boolean)
-  if (lines.length < 2) return []
-  const header = lines[0].split(',').map((h) => h.trim().toLowerCase())
-  const idx = (name: string) => header.indexOf(name)
-  return lines.slice(1).flatMap((line) => {
-    const cols = line.split(',').map((c) => c.trim())
-    const lng = Number(cols[idx('lng')])
-    const lat = Number(cols[idx('lat')])
-    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return []
-    return [
-      {
-        name: cols[idx('name')] || 'Investment',
-        type: cols[idx('type')] || '',
-        status: cols[idx('status')] || '',
-        cost: cols[idx('cost')] || '',
-        lng,
-        lat,
-      },
-    ]
-  })
-}
-
 export function formatInt(n: number): string {
   return new Intl.NumberFormat('en').format(Math.round(n))
 }

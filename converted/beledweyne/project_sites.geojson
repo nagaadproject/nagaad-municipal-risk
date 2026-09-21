@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "project_sites",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "name": "Construction of Beledweyne PIU office and Lab", "status": "Completed", "category": "Buildings", "packageName": "Beledweyne Investments", "stage": "completed_ongoing", "network": "nagaad", "sourceFile": "SURP-II Investments completed and ongoing/0. Office & Lab Construction (Completed)/Construction of Beledweyne PIU office and Lab.gpkg", "sourceFormat": "gpkg", "lengthKm": 0.244, "inFlood": 0 }, "geometry": { "type": "MultiLineString", "coordinates": [ [ [ 45.240724138780052, 4.759170396875857 ], [ 45.240898506914633, 4.759689925457088 ], [ 45.241441650806387, 4.759499831046268 ], [ 45.241249489893583, 4.758984743698305 ], [ 45.240745928957352, 4.75915490989118 ] ] ] } }
+]
+}
