@@ -46,7 +46,11 @@ export function KpiStrip({ summary, embed }: KpiStripProps) {
   ]
 
   return (
-    <div className={`grid shrink-0 grid-cols-5 ${embed ? 'gap-1' : 'gap-3'}`}>
+    <div
+      className={`grid shrink-0 ${
+        embed ? 'grid-cols-5 gap-1' : 'grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3'
+      }`}
+    >
       {items.map((item) => (
         <div
           key={item.label}
@@ -63,7 +67,9 @@ export function KpiStrip({ summary, embed }: KpiStripProps) {
           >
             {item.value}
           </div>
-          <div className="truncate text-[9px] leading-none text-slate-500">{item.hint}</div>
+          <div className={`truncate text-[9px] leading-none text-slate-500 ${embed ? 'hidden sm:block' : ''}`}>
+            {item.hint}
+          </div>
         </div>
       ))}
     </div>

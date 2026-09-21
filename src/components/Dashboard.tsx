@@ -28,6 +28,7 @@ export function Dashboard({ city, embed }: DashboardProps) {
   const [layerOn, setLayerOn] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(city.layers.map((l) => [l.id, l.defaultOn])),
   )
+  const [mobilePanel, setMobilePanel] = useState(false)
 
   useEffect(() => {
     setLayerOn(Object.fromEntries(city.layers.map((l) => [l.id, l.defaultOn])))
@@ -74,12 +75,21 @@ export function Dashboard({ city, embed }: DashboardProps) {
         </header>
       )}
       {embed && (
-        <header className="flex h-9 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-2.5">
+        <header className="flex h-9 shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-white px-2.5">
           <div className="flex min-w-0 items-center gap-2">
             <img src={logoSrc()} alt="Nagaad" className="h-6 w-6 shrink-0 rounded-full bg-white object-contain" />
             <div className="truncate text-sm font-semibold text-slate-900">{city.label}</div>
           </div>
-          <div className="shrink-0 text-[10px] text-slate-500">Historical flood extent</div>
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="hidden text-[10px] text-slate-500 sm:block">Historical flood extent</div>
+            <button
+              type="button"
+              className="rounded border border-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-700 lg:hidden"
+              onClick={() => setMobilePanel((open) => !open)}
+            >
+              {mobilePanel ? 'Map' : 'Layers'}
+            </button>
+          </div>
         </header>
       )}
 
@@ -93,16 +103,28 @@ export function Dashboard({ city, embed }: DashboardProps) {
           </div>
         )}
         <div
-          className={`grid min-h-0 flex-1 overflow-hidden ${
+          className={`flex min-h-0 flex-1 flex-col overflow-hidden lg:grid ${
             embed
-              ? 'grid-cols-[minmax(0,1fr)_17.5rem] gap-1.5'
-              : 'grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_20rem]'
+              ? 'gap-1.5 lg:grid-cols-[minmax(0,1fr)_17.5rem]'
+              : 'gap-2 lg:grid-cols-[minmax(0,1fr)_20rem]'
           }`}
         >
-          <div className="min-h-0 overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
+          <div
+            className={`min-h-0 overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm ${
+              embed && mobilePanel ? 'hidden lg:block' : 'min-h-[50vh] flex-1'
+            }`}
+          >
             <MapView ref={mapRef} city={city} layerOn={layerOnStable} />
           </div>
-          <aside className="flex min-h-0 flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
+          <aside
+            className={`min-h-0 flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm ${
+              embed
+                ? mobilePanel
+                  ? 'flex max-h-[48vh] flex-1 lg:max-h-none'
+                  : 'hidden lg:flex'
+                : 'flex min-h-0 flex-1'
+            }`}
+          >
             <LayerPanel
               city={city}
               layerOn={layerOn}
