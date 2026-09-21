@@ -120,18 +120,9 @@ export const MapView = forwardRef<MapHandle, MapViewProps>(function MapView(
       console.warn('Map error', e.error ?? e)
     })
 
-    map.on('load', () => {
+    const startOverlays = () => {
+      if (map.getSource('idps')) return
       const slug = city.slug
-      const pmtilesSource = (file: string, minzoom: number, maxzoom: number) => ({
-        type: 'vector' as const,
-        tiles: [`${pmtilesUrl(absDataUrl(slug, file))}/{z}/{x}/{y}`],
-        minzoom,
-        maxzoom,
-      })
-
-      map.addSource('flood', pmtilesSource('flood.pmtiles', 0, 10))
-      map.addSource('buildings', pmtilesSource('buildings.pmtiles', 12, 16))
-      map.addSource('roads', pmtilesSource('roads.pmtiles', 10, 16))
       map.addSource('boundary', { type: 'geojson', data: absDataUrl(slug, 'boundary.geojson') })
       map.addSource('river', { type: 'geojson', data: absDataUrl(slug, 'river.geojson') })
       map.addSource('idps', { type: 'geojson', data: absDataUrl(slug, 'idps.geojson') })
@@ -139,6 +130,18 @@ export const MapView = forwardRef<MapHandle, MapViewProps>(function MapView(
       map.addSource('investments', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },
+      })
+      map.addSource('flood', {
+        type: 'vector',
+        url: pmtilesUrl(absDataUrl(slug, 'flood.pmtiles')),
+      })
+      map.addSource('buildings', {
+        type: 'vector',
+        url: pmtilesUrl(absDataUrl(slug, 'buildings.pmtiles')),
+      })
+      map.addSource('roads', {
+        type: 'vector',
+        url: pmtilesUrl(absDataUrl(slug, 'roads.pmtiles')),
       })
 
       map.addLayer({
@@ -293,7 +296,10 @@ export const MapView = forwardRef<MapHandle, MapViewProps>(function MapView(
         setLayerVisibility(map, id, on)
       }
       map.resize()
-    })
+    }
+
+    if (map.loaded()) startOverlays()
+    else map.once('load', startOverlays)
 
     return () => {
       ro.disconnect()
