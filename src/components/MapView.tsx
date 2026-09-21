@@ -5,13 +5,17 @@ import {
   Popup,
   ScaleControl,
   addProtocol,
+  setWorkerUrl,
   type LngLatBoundsLike,
   type MapLayerMouseEvent,
   type StyleSpecification,
 } from 'maplibre-gl'
+import maplibreWorker from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import { Protocol } from 'pmtiles'
 import type { CityConfig } from '../cities/types'
 import { dataUrl, pmtilesUrl } from '../lib/data'
+
+setWorkerUrl(maplibreWorker)
 
 let protocolRegistered = false
 
@@ -20,6 +24,12 @@ function ensurePmtilesProtocol() {
   const protocol = new Protocol({ metadata: true })
   addProtocol('pmtiles', (request, abortController) => protocol.tilev4(request, abortController))
   protocolRegistered = true
+}
+
+async function loadGeoJsonFile(slug: string, file: string) {
+  const res = await fetch(absDataUrl(slug, file))
+  if (!res.ok) return { type: 'FeatureCollection', features: [] }
+  return res.json()
 }
 
 function absDataUrl(slug: string, file: string) {
@@ -130,7 +140,6 @@ export const MapView = forwardRef<MapHandle, MapViewProps>(function MapView(
     popupRef.current = new Popup({ closeButton: true, maxWidth: '280px' })
     const ro = new ResizeObserver(() => {
       map.resize()
-      if (!hasUserMoved()) fitCity()
     })
     ro.observe(containerRef.current)
 
@@ -166,21 +175,27 @@ export const MapView = forwardRef<MapHandle, MapViewProps>(function MapView(
       }
     }
 
-    const startOverlays = () => {
-      if (map.getSource('idps')) return
+    let overlaysStarted = false
+    const startOverlays = async () => {
+      if (overlaysStarted || !map.isStyleLoaded()) return
+      overlaysStarted = true
       const slug = city.slug
-      map.addSource('boundary', { type: 'geojson', data: absDataUrl(slug, 'boundary.geojson') })
-      map.addSource('river', { type: 'geojson', data: absDataUrl(slug, 'river.geojson') })
-      map.addSource('idps', { type: 'geojson', data: absDataUrl(slug, 'idps.geojson') })
-      map.addSource('projectRoads', {
-        type: 'geojson',
-        data: absDataUrl(slug, 'project_roads.geojson'),
-      })
-      map.addSource('projectSites', {
-        type: 'geojson',
-        data: absDataUrl(slug, 'project_sites.geojson'),
-      })
-      map.addSource('facilities', { type: 'geojson', data: absDataUrl(slug, 'facilities.geojson') })
+      try {
+      const [boundary, river, idps, projectRoads, projectSites, facilities] = await Promise.all([
+        loadGeoJsonFile(slug, 'boundary.geojson'),
+        loadGeoJsonFile(slug, 'river.geojson'),
+        loadGeoJsonFile(slug, 'idps.geojson'),
+        loadGeoJsonFile(slug, 'project_roads.geojson'),
+        loadGeoJsonFile(slug, 'project_sites.geojson'),
+        loadGeoJsonFile(slug, 'facilities.geojson'),
+      ])
+      if (map.getSource('idps')) return
+      map.addSource('boundary', { type: 'geojson', data: boundary })
+      map.addSource('river', { type: 'geojson', data: river })
+      map.addSource('idps', { type: 'geojson', data: idps })
+      map.addSource('projectRoads', { type: 'geojson', data: projectRoads })
+      map.addSource('projectSites', { type: 'geojson', data: projectSites })
+      map.addSource('facilities', { type: 'geojson', data: facilities })
 
       map.addLayer({
         id: 'river-line',
@@ -367,7 +382,7 @@ export const MapView = forwardRef<MapHandle, MapViewProps>(function MapView(
           type: 'fill',
           source: 'buildings',
           'source-layer': 'buildings',
-          minzoom: 13,
+          minzoom: 11,
           paint: {
             'fill-color': ['case', ['==', ['get', 'inFlood'], 1], '#dc2626', '#a8a29e'],
             'fill-opacity': 0.75,
@@ -423,6 +438,10 @@ export const MapView = forwardRef<MapHandle, MapViewProps>(function MapView(
         setLayerVisibility(map, id, on)
       }
       map.resize()
+      } catch (err) {
+        overlaysStarted = false
+        console.warn('Map overlays failed', err)
+      }
     }
 
     if (map.loaded()) startOverlays()
