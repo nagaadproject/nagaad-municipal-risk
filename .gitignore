@@ -25,6 +25,16 @@ dist-ssr
 *.sln
 *.sw?
 
+# Stay local — not required for GitHub Pages
+etl/
+docs/
+converted/
+docker-compose.yml
+
+# Unused copies (map reads GeoJSON/PMTiles/summary only)
+public/data/beledweyne/investments.csv
+public/data/beledweyne/facilities.schema.json
+
 # ETL scratch and raw GIS (never commit the 5.9 GB dump)
 etl/tmp/
 data/raw/
@@ -37,6 +47,5 @@ data/raw/
 *.prj
 *.qmd
 *.gpkg
-!converted/**/*.gpkg
 *.tif
 *.aux.xml
