@@ -10,12 +10,14 @@ import {
   type MapLayerMouseEvent,
   type StyleSpecification,
 } from 'maplibre-gl'
-import maplibreWorker from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import { Protocol } from 'pmtiles'
 import type { CityConfig } from '../cities/types'
 import { dataUrl, pmtilesUrl } from '../lib/data'
 
-setWorkerUrl(maplibreWorker)
+const viteBase = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : `${import.meta.env.BASE_URL}/`
+setWorkerUrl(`${viteBase}maplibre/maplibre-gl-worker.mjs`)
 
 let protocolRegistered = false
 
@@ -29,7 +31,12 @@ function ensurePmtilesProtocol() {
 async function loadGeoJsonFile(slug: string, file: string) {
   const res = await fetch(absDataUrl(slug, file))
   if (!res.ok) return { type: 'FeatureCollection', features: [] }
-  return res.json()
+  const json = (await res.json()) as Record<string, unknown>
+  delete json.crs
+  if (json.type !== 'FeatureCollection' || !Array.isArray(json.features)) {
+    return { type: 'FeatureCollection', features: [] }
+  }
+  return json
 }
 
 function absDataUrl(slug: string, file: string) {
