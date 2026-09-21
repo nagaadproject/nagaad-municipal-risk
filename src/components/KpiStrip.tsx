@@ -16,7 +16,7 @@ export function KpiStrip({ summary, embed }: KpiStripProps) {
     {
       label: 'Flood area',
       value: summary ? formatHa(summary.floodAreaHa) : '—',
-      hint: summary ? 'Historical extent in the city' : 'Run ETL to populate',
+      hint: 'Historical extent in the city',
     },
     {
       label: 'Buildings in flood',

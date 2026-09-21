@@ -89,8 +89,7 @@ export function Dashboard({ city, embed }: DashboardProps) {
         <KpiStrip summary={summary} embed={embed} />
         {missingData && (
           <div className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900">
-            Processed city data is not in this build yet. Run the ETL (see README) to generate GeoJSON,
-            PMTiles, and summary.json.
+            City data is not available.
           </div>
         )}
         <div

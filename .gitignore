@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 .env
+.env.example
 
 # Editor
 .cursor/
@@ -25,17 +26,18 @@ dist-ssr
 *.sln
 *.sw?
 
-# Stay local — not required for GitHub Pages
+# Local only
 etl/
 docs/
 converted/
 docker-compose.yml
 
-# Unused copies (map reads GeoJSON/PMTiles/summary only)
+# Not used by the Pages map
 public/data/beledweyne/investments.csv
 public/data/beledweyne/facilities.schema.json
+public/favicon.svg
 
-# ETL scratch and raw GIS (never commit the 5.9 GB dump)
+# GIS scratch
 etl/tmp/
 data/raw/
 *.shp

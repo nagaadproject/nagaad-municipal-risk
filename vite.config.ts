@@ -6,7 +6,6 @@ import { defineConfig, type Plugin } from 'vite'
 
 const MAPLIBRE_WORKER_FILES = ['maplibre-gl-worker.mjs', 'maplibre-gl-shared.mjs'] as const
 
-/** Serve MapLibre's worker + shared module as a pair so GitHub Pages does not 404 the import. */
 function maplibreWorkerFiles(): Plugin {
   const distDir = resolve('node_modules/maplibre-gl/dist')
   const names = new Set<string>(MAPLIBRE_WORKER_FILES)
