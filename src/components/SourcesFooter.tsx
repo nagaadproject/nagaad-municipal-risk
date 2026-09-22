@@ -6,14 +6,14 @@ interface SourcesFooterProps {
 export function SourcesFooter({ generatedAt, embed }: SourcesFooterProps) {
   const date = generatedAt ? generatedAt.slice(0, 10) : undefined
   const full =
-    'Indicative flood screening only — not a full probabilistic risk model. Historical Shabelle flood extent is clipped to the city and intersected separately with buildings, OSM roads, Nagaad project roads, and IDP sites. Buildings from SURP II footprints; city-wide roads from OSM; Nagaad roads from SURP-II GeoPackages and design-ready KML/KMZ. IDP sites from IOM DTM / SURP II. Hospitals, schools, and markets are reserved for later collection. Basemap tiles © Esri.' +
+    'Indicative flood screening only — not a full probabilistic risk model. Historical Shabelle flood extent is clipped to the city and intersected separately with buildings, OSM roads, Nagaad project roads, and IDP sites. Buildings from SURP II footprints; city-wide roads from OSM; Nagaad roads from SURP-II GeoPackages and design-ready KML/KMZ. IDP sites from IOM DTM / SURP II. Hospitals, schools, and markets are reserved for later collection. Basemap tiles © Esri (light gray and World Imagery).' +
     (date ? ` Data processed ${date}.` : '')
 
   const compact = [
     'Indicative screening — not a probabilistic model',
     'Shabelle historical flood',
     'SURP II / OSM / IOM DTM',
-    'Basemap © Esri',
+    'Basemap © Esri (map / satellite)',
     date ? `Processed ${date}` : null,
   ]
     .filter(Boolean)

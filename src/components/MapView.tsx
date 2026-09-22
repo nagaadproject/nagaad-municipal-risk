@@ -1,4 +1,4 @@
-import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react'
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react'
 import {
   Map as MapLibreMap,
   NavigationControl,
@@ -43,10 +43,20 @@ function absDataUrl(slug: string, file: string) {
   return new URL(dataUrl(slug, file), window.location.href).href
 }
 
+type BasemapId = 'map' | 'satellite'
+
+const BASEMAPS: Record<
+  BasemapId,
+  { layerId: string; sourceId: string; label: string }
+> = {
+  map: { layerId: 'esri-map', sourceId: 'esri-map', label: 'Map' },
+  satellite: { layerId: 'esri-satellite', sourceId: 'esri-satellite', label: 'Satellite' },
+}
+
 const BASEMAP_STYLE: StyleSpecification = {
   version: 8,
   sources: {
-    esri: {
+    'esri-map': {
       type: 'raster',
       tiles: [
         'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
@@ -55,8 +65,34 @@ const BASEMAP_STYLE: StyleSpecification = {
       attribution: 'Tiles © Esri — Esri, HERE, Garmin, FAO, NOAA, USGS',
       maxzoom: 16,
     },
+    'esri-satellite': {
+      type: 'raster',
+      tiles: [
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      ],
+      tileSize: 256,
+      attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics',
+      maxzoom: 19,
+    },
   },
-  layers: [{ id: 'esri', type: 'raster', source: 'esri' }],
+  layers: [
+    { id: 'esri-map', type: 'raster', source: 'esri-map' },
+    {
+      id: 'esri-satellite',
+      type: 'raster',
+      source: 'esri-satellite',
+      layout: { visibility: 'none' },
+    },
+  ],
+}
+
+function applyBasemap(map: MapLibreMap, basemap: BasemapId) {
+  for (const id of Object.keys(BASEMAPS) as BasemapId[]) {
+    const layerId = BASEMAPS[id].layerId
+    if (map.getLayer(layerId)) {
+      map.setLayoutProperty(layerId, 'visibility', id === basemap ? 'visible' : 'none')
+    }
+  }
 }
 
 const TOP_LAYERS = [
@@ -98,6 +134,9 @@ export const MapView = forwardRef<MapHandle, MapViewProps>(function MapView(
   const popupRef = useRef<Popup | null>(null)
   const readyRef = useRef(false)
   const userMovedRef = useRef(false)
+  const [basemap, setBasemap] = useState<BasemapId>('map')
+  const basemapRef = useRef(basemap)
+  basemapRef.current = basemap
 
   useImperativeHandle(ref, () => ({
     flyTo(lng: number, lat: number) {
@@ -140,6 +179,7 @@ export const MapView = forwardRef<MapHandle, MapViewProps>(function MapView(
     })
     fitCity()
     map.once('load', () => {
+      applyBasemap(map, basemapRef.current)
       map.resize()
       if (!hasUserMoved()) fitCity()
     })
@@ -473,7 +513,32 @@ export const MapView = forwardRef<MapHandle, MapViewProps>(function MapView(
     }
   }, [layerOn, city.layers])
 
-  return <div ref={containerRef} className="h-full w-full" />
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    applyBasemap(map, basemap)
+  }, [basemap])
+
+  return (
+    <div className="relative h-full w-full">
+      <div ref={containerRef} className="h-full w-full" />
+      <div className="absolute left-2 top-2 z-10 flex overflow-hidden rounded border border-slate-200 bg-white text-[11px] font-medium shadow-sm">
+        {(Object.keys(BASEMAPS) as BasemapId[]).map((id) => (
+          <button
+            key={id}
+            type="button"
+            className={`px-2 py-1 ${
+              basemap === id ? 'bg-[#1e4d7b] text-white' : 'bg-white text-slate-700 hover:bg-slate-50'
+            }`}
+            aria-pressed={basemap === id}
+            onClick={() => setBasemap(id)}
+          >
+            {BASEMAPS[id].label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 })
 
 function setLayerVisibility(map: MapLibreMap, id: string, on: boolean) {
